@@ -382,6 +382,14 @@
             <input type="text" class="search-input" placeholder="Search for functions, sensors, or concepts..."
                 id="searchInput">
         </div>
+        <!-- Upload Button -->
+        <div style="text-align: center; margin-bottom: 30px;">
+            <button onclick="showUploadView()"
+                style="background: linear-gradient(135deg, #3498db 0%, #2ecc71 100%); color: white; border: 2px solid rgba(255,255,255,0.3); padding: 15px 30px; border-radius: 15px; font-size: 1.1rem; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s ease;">
+                📁 Upload Your Robot Code
+            </button>
+        </div>
+
         <div class="category-section">
             <h2 class="category-title">🔧 Basic Setup</h2>
             <div class="topic-grid">
@@ -605,6 +613,68 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Upload View -->
+    <div id="uploadView" class="container" style="display: none;">
+        <div class="header">
+            <h1>📁 Upload Your Robot Code</h1>
+            <p>Save and share your VEX robotics projects</p>
+        </div>
+
+        <!-- Upload Form -->
+        <div
+            style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.2);">
+            <h3 style="margin-bottom: 20px; font-size: 1.5rem;">Upload New Project</h3>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 600;">Project Name:</label>
+                <input type="text" id="projectName" placeholder="My Awesome Robot"
+                    style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; font-size: 1rem;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 600;">Your Name (Optional):</label>
+                <input type="text" id="userId" placeholder="Your name"
+                    style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; font-size: 1rem;">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 600;">Select Code Files:</label>
+                <input type="file" id="fileInput" multiple accept=".cpp,.h,.c,.txt,.ino"
+                    style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; cursor: pointer;">
+                <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 10px;">📝 Select .cpp, .h, .c, .txt, or .ino
+                    files from your VS Code project</p>
+            </div>
+
+            <div id="fileList" style="margin-bottom: 20px; max-height: 200px; overflow-y: auto;">
+                <!-- Selected files will appear here -->
+            </div>
+
+            <button id="uploadBtn" onclick="uploadProject()"
+                style="background: #3498db; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 1.1rem; cursor: pointer; width: 100%; transition: all 0.3s ease; font-weight: 600;">
+                🚀 Upload Project
+            </button>
+
+            <div id="uploadStatus" style="margin-top: 20px; padding: 15px; border-radius: 10px; display: none;">
+                <!-- Status messages will appear here -->
+            </div>
+        </div>
+
+        <!-- Saved Projects List -->
+        <div
+            style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.2);">
+            <h3 style="margin-bottom: 20px; font-size: 1.5rem;">Your Saved Projects</h3>
+            <div id="projectsList">
+                <p style="opacity: 0.7; text-align: center; padding: 20px;">No projects uploaded yet. Upload your first
+                    project above!</p>
+            </div>
+        </div>
+
+        <button onclick="showMain()"
+            style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 12px 24px; border-radius: 10px; margin-top: 20px; cursor: pointer; transition: all 0.3s ease;">
+            ← Back to Topics
+        </button>
     </div>
     <div id="page-setup" class="page-view">
         <div class="page-header">
@@ -1210,6 +1280,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
         // Navigation functions
         function showMain(state = true) {
             document.getElementById('mainView').style.display = 'block';
+            document.getElementById('uploadView').style.display = 'none';
             document.querySelectorAll('.page-view').forEach(page => {
                 page.style.display = 'none';
             });
@@ -1302,8 +1373,259 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 showMain(false);
             }
         });
+
+        // Show upload view
+        function showUploadView() {
+            document.getElementById('mainView').style.display = 'none';
+            document.querySelectorAll('.page-view').forEach(page => {
+                page.style.display = 'none';
+            });
+            document.getElementById('uploadView').style.display = 'block';
+            loadUserProjects();
+        }
+
+        // Display selected files
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    const fileList = document.getElementById('fileList');
+                    fileList.innerHTML = '';
+
+                    if (e.target.files.length > 0) {
+                        fileList.innerHTML = '<h4 style="margin-bottom: 10px; color: #3498db;">Selected Files:</h4>';
+                        Array.from(e.target.files).forEach(file => {
+                            const fileItem = document.createElement('div');
+                            fileItem.style.cssText = 'background: rgba(52, 152, 219, 0.2); padding: 10px; margin-bottom: 5px; border-radius: 8px; border-left: 3px solid #3498db;';
+                            fileItem.innerHTML = `<strong>${file.name}</strong> <span style="opacity: 0.7;">(${(file.size / 1024).toFixed(2)} KB)</span>`;
+                            fileList.appendChild(fileItem);
+                        });
+                    }
+                });
+            }
+        });
+
+        // Upload project function
+        async function uploadProject() {
+            const projectName = document.getElementById('projectName').value;
+            const userId = document.getElementById('userId').value || 'anonymous';
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const statusDiv = document.getElementById('uploadStatus');
+
+            // Validation
+            if (!projectName) {
+                showStatus('⚠️ Please enter a project name', 'error');
+                return;
+            }
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showStatus('⚠️ Please select at least one file', 'error');
+                return;
+            }
+
+            // Disable button during upload
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '⏳ Uploading...';
+            uploadBtn.style.background = '#95a5a6';
+
+            try {
+                // Create FormData
+                const formData = new FormData();
+                formData.append('projectName', projectName);
+                formData.append('userId', userId);
+
+                // Add all files
+                Array.from(fileInput.files).forEach(file => {
+                    formData.append('files', file);
+                });
+
+                // Upload to Netlify function
+                const response = await fetch('/.netlify/functions/upload-project', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus(`✅ Project "${projectName}" uploaded successfully!`, 'success');
+
+                    // Clear form
+                    document.getElementById('projectName').value = '';
+                    document.getElementById('fileInput').value = '';
+                    document.getElementById('fileList').innerHTML = '';
+
+                    // Reload projects list
+                    loadUserProjects();
+                } else {
+                    showStatus(`❌ Upload failed: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus(`❌ Upload failed: ${error.message}`, 'error');
+            } finally {
+                // Re-enable button
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '🚀 Upload Project';
+                uploadBtn.style.background = '#3498db';
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('uploadStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = message;
+
+            if (type === 'success') {
+                statusDiv.style.background = 'linear-gradient(120deg, rgba(46, 204, 113, 0.3) 0%, rgba(39, 174, 96, 0.3) 100%)';
+                statusDiv.style.borderLeft = '4px solid #2ecc71';
+                statusDiv.style.color = '#fff';
+            } else {
+                statusDiv.style.background = 'linear-gradient(120deg, rgba(231, 76, 60, 0.3) 0%, rgba(192, 57, 43, 0.3) 100%)';
+                statusDiv.style.borderLeft = '4px solid #e74c3c';
+                statusDiv.style.color = '#fff';
+            }
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Load user's projects
+        async function loadUserProjects() {
+            const userId = document.getElementById('userId').value || 'anonymous';
+            const projectsList = document.getElementById('projectsList');
+
+            projectsList.innerHTML = '<p style="text-align: center; opacity: 0.7;">⏳ Loading projects...</p>';
+
+            try {
+                const response = await fetch(`/.netlify/functions/get-projects?userId=${encodeURIComponent(userId)}`);
+                const result = await response.json();
+
+                if (result.success && result.projects.length > 0) {
+                    projectsList.innerHTML = '';
+                    result.projects.forEach(project => {
+                        const projectCard = document.createElement('div');
+                        projectCard.style.cssText = 'background: rgba(255,255,255,0.05); padding: 20px; margin-bottom: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease;';
+                        projectCard.onmouseover = () => projectCard.style.background = 'rgba(255,255,255,0.1)';
+                        projectCard.onmouseout = () => projectCard.style.background = 'rgba(255,255,255,0.05)';
+
+                        projectCard.innerHTML = `
+                            <h4 style="margin-bottom: 10px; color: #3498db; font-size: 1.2rem;">${project.projectName}</h4>
+                            <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 10px;">
+                                📅 ${new Date(project.uploadDate).toLocaleDateString()} | 
+                                📁 ${project.fileCount} file${project.fileCount > 1 ? 's' : ''}
+                            </p>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button onclick="viewProject('${project.projectId}')" 
+                                        style="background: #3498db; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
+                                    👁️ View Code
+                                </button>
+                                <button onclick="downloadProject('${project.projectId}')" 
+                                        style="background: #2ecc71; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
+                                    💾 Download
+                                </button>
+                            </div>
+                        `;
+
+                        projectsList.appendChild(projectCard);
+                    });
+                } else {
+                    projectsList.innerHTML = '<p style="opacity: 0.7; text-align: center; padding: 20px;">No projects uploaded yet. Upload your first project above!</p>';
+                }
+
+            } catch (error) {
+                console.error('Load projects error:', error);
+                projectsList.innerHTML = '<p style="color: #e74c3c; text-align: center;">❌ Failed to load projects. Please try again.</p>';
+            }
+        }
+
+        // View project code
+        async function viewProject(projectId) {
+            try {
+                const response = await fetch(`/.netlify/functions/get-project?projectId=${encodeURIComponent(projectId)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    // Create modal to display code
+                    const modal = document.createElement('div');
+                    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.9); z-index: 10000; overflow-y: auto; padding: 20px;';
+
+                    let filesHTML = '';
+                    result.project.files.forEach(file => {
+                        filesHTML += `
+                            <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                                <h3 style="color: #3498db; margin-bottom: 15px;">📄 ${file.name}</h3>
+                                <div style="background: #1e1e1e; border-radius: 8px; padding: 15px; overflow-x: auto;">
+                                    <pre style="color: #f8f8f2; margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.9rem;">${escapeHtml(file.content)}</pre>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    modal.innerHTML = `
+                        <div style="max-width: 1200px; margin: 0 auto; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border-radius: 20px; padding: 30px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                                <h2 style="color: #ecf0f1;">${result.project.projectName}</h2>
+                                <button onclick="this.closest('[style*=fixed]').remove()" 
+                                        style="background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1rem;">
+                                    ✕ Close
+                                </button>
+                            </div>
+                            ${filesHTML}
+                        </div>
+                    `;
+
+                    document.body.appendChild(modal);
+                }
+
+            } catch (error) {
+                console.error('View project error:', error);
+                alert('❌ Failed to load project code. Please try again.');
+            }
+        }
+
+        // Download project files
+        async function downloadProject(projectId) {
+            try {
+                const response = await fetch(`/.netlify/functions/get-project?projectId=${encodeURIComponent(projectId)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    // Download each file individually
+                    result.project.files.forEach(file => {
+                        const blob = new Blob([file.content], { type: 'text/plain' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = file.name;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                    });
+
+                    alert(`✅ Downloaded ${result.project.files.length} file(s)!`);
+                }
+
+            } catch (error) {
+                console.error('Download project error:', error);
+                alert('❌ Failed to download project. Please try again.');
+            }
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
-    
+
 </body>
 
 </html>
