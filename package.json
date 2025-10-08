@@ -1,0 +1,10 @@
+{
+    "name": "robotics-code-guide",
+    "version": "1.0.0",
+    "description": "C++ for Robotics Topic Guide with Code Upload",
+    "type": "module",
+    "dependencies": {
+      "@netlify/blobs": "^7.0.0",
+      "@netlify/functions": "^2.0.0"
+    }
+  }
