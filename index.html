@@ -2,10 +2,25 @@
 <html lang="en">
 
 <head>
+    <!-- Add JSZip library for creating ZIP files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>C++ for Robotics - Topic Guide</title>
     <style>
+        /* Add this to your existing <style> section */
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         /* Base styles for all screen sizes (mobile-first) */
         * {
             margin: 0;
@@ -622,7 +637,16 @@
             <h1>📁 Upload Your Robot Code</h1>
             <p>Save and share your VEX robotics projects</p>
         </div>
-
+        <div
+            style="background: rgba(52, 152, 219, 0.15); padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #3498db;">
+            <h4 style="margin-bottom: 10px; color: #3498db;">📤 How to Upload</h4>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li>Click "Select Code Files" below</li>
+                <li>Choose your <strong>entire VS Code project folder</strong></li>
+                <li>All files and folders will be preserved</li>
+                <li>Give your project a name and click Upload!</li>
+            </ul>
+        </div>
         <!-- Upload Form -->
         <div
             style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.2);">
@@ -669,6 +693,27 @@
             <div id="projectsList">
                 <p style="opacity: 0.7; text-align: center; padding: 20px;">No projects uploaded yet. Upload your first
                     project above!</p>
+            </div>
+        </div>
+        <!-- Instructions for Users - ADD THIS ENTIRE SECTION -->
+        <div
+            style="background: linear-gradient(120deg, rgba(241, 196, 15, 0.2) 0%, rgba(243, 156, 18, 0.2) 100%); padding: 25px; border-radius: 15px; margin-top: 30px; border-left: 4px solid #f1c40f; backdrop-filter: blur(10px);">
+            <h4 style="margin-bottom: 15px; color: #f1c40f; font-size: 1.3rem;">💡 How to Use Downloaded Projects</h4>
+            <ol style="margin-left: 20px; line-height: 2; font-size: 1rem;">
+                <li>Click <strong style="color: #2ecc71;">"💾 Download ZIP"</strong> on any project below</li>
+                <li><strong>Extract the ZIP file</strong> to a location on your computer (right-click → Extract)</li>
+                <li>Open <strong>VS Code</strong></li>
+                <li><strong>Drag the extracted folder</strong> into the VS Code window</li>
+                <li>The <strong>VEX extension</strong> will automatically recognize the project structure</li>
+                <li>Start coding and building! 🚀</li>
+            </ol>
+
+            <div
+                style="background: rgba(52, 152, 219, 0.2); padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 3px solid #3498db;">
+                <p style="margin: 0; font-size: 0.95rem;">
+                    <strong>📝 Note:</strong> Make sure you have the VEX Robotics extension installed in VS Code.
+                    The folder structure will be preserved exactly as you uploaded it.
+                </p>
             </div>
         </div>
 
@@ -1631,8 +1676,8 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                                     👁️ View Code
                                 </button>
                                 <button onclick="downloadProject('${project.projectId}')" 
-                                        style="background: #2ecc71; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
-                                    💾 Download
+                                style="background: #2ecc71; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;">
+                                💾 Download ZIP
                                 </button>
                             </div>
                         `;
@@ -1717,26 +1762,76 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
         }
 
         // Download project files
+        // Download project as ZIP file (updated to create proper folder structure)
         async function downloadProject(projectId) {
             try {
+                // Show loading message
+                const loadingMsg = document.createElement('div');
+                loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(52, 152, 219, 0.95); color: white; padding: 20px 40px; border-radius: 15px; z-index: 10001; font-size: 1.2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5);';
+                loadingMsg.textContent = '📦 Preparing download...';
+                document.body.appendChild(loadingMsg);
+
                 const response = await fetch(`/.netlify/functions/get-project?projectId=${encodeURIComponent(projectId)}`);
                 const result = await response.json();
 
                 if (result.success) {
-                    // Download each file individually
+                    // Create a new JSZip instance
+                    const zip = new JSZip();
+
+                    // Use the folder name from the project, or project name as fallback
+                    const folderName = result.project.folderName || result.project.projectName.replace(/[^a-zA-Z0-9-_]/g, '_');
+
+                    // Create the root folder in the ZIP
+                    const rootFolder = zip.folder(folderName);
+
+                    // Add each file with its full folder structure
                     result.project.files.forEach(file => {
-                        const blob = new Blob([file.content], { type: 'text/plain' });
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = file.name;
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                        document.body.removeChild(a);
+                        // Use the relative path to preserve folder structure
+                        const filePath = file.relativePath || file.name;
+                        rootFolder.file(filePath, file.content);
                     });
 
-                    alert(`✅ Downloaded ${result.project.files.length} file(s)!`);
+                    // Generate the ZIP file
+                    loadingMsg.textContent = '🔄 Creating ZIP file...';
+                    const zipBlob = await zip.generateAsync({
+                        type: 'blob',
+                        compression: 'DEFLATE',
+                        compressionOptions: {
+                            level: 6
+                        }
+                    });
+
+                    // Create download link
+                    const url = window.URL.createObjectURL(zipBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${folderName}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+
+                    // Cleanup
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    document.body.removeChild(loadingMsg);
+
+                    // Show success message
+                    const successMsg = document.createElement('div');
+                    successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); color: white; padding: 15px 25px; border-radius: 12px; z-index: 10001; box-shadow: 0 4px 20px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;';
+                    successMsg.innerHTML = `
+                        <strong>✅ Download Complete!</strong><br>
+                        <span style="font-size: 0.9rem; opacity: 0.9;">Extract the ZIP and drag the folder into VS Code</span>
+                    `;
+                    document.body.appendChild(successMsg);
+
+                    setTimeout(() => {
+                        successMsg.style.opacity = '0';
+                        successMsg.style.transition = 'opacity 0.3s ease';
+                        setTimeout(() => document.body.removeChild(successMsg), 300);
+                    }, 4000);
+
+                } else {
+                    document.body.removeChild(loadingMsg);
+                    alert('❌ Failed to download project: ' + result.error);
                 }
 
             } catch (error) {
@@ -1819,9 +1914,9 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                                             style="background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
                                         👁️ View
                                     </button>
-                                    <button onclick="downloadProject('${project.projectId}')" 
+                                    <button onclick="downloadProject('${project.projectId}')"
                                             style="background: #2ecc71; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
-                                        💾 Download
+                                        💾 Download ZIP
                                     </button>
                                     <button onclick="deleteProject('${project.projectId}', '${project.projectName}')" 
                                             style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
