@@ -389,6 +389,13 @@
                 📁 Upload Your Robot Code
             </button>
         </div>
+        <!-- Admin Panel Button (only visible to you) -->
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button onclick="showAdminPanel()"
+                style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; border: 2px solid rgba(255,255,255,0.3); padding: 12px 24px; border-radius: 15px; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                🔐 Admin: View All Projects
+            </button>
+        </div>
 
         <div class="category-section">
             <h2 class="category-title">🔧 Basic Setup</h2>
@@ -641,9 +648,10 @@
 
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 10px; font-weight: 600;">Select Code Files:</label>
-                <input type="file" id="fileInput" webkitdirectory directory multiple 
+                <input type="file" id="fileInput" webkitdirectory directory multiple
                     style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; cursor: pointer;">
-                <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 10px;">📁 Click to select your entire VS Code project folder (all files will be uploaded)</p>
+                <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 10px;">📁 Click to select your entire VS Code
+                    project folder (all files will be uploaded)</p>
             </div>
 
             <div id="fileList" style="margin-bottom: 20px; max-height: 200px; overflow-y: auto;">
@@ -672,6 +680,33 @@
 
         <button onclick="showMain()"
             style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 12px 24px; border-radius: 10px; margin-top: 20px; cursor: pointer; transition: all 0.3s ease;">
+            ← Back to Topics
+        </button>
+    </div>
+    <div id="adminView" class="container" style="display: none;">
+        <div class="header">
+            <h1>🔐 Admin Panel</h1>
+            <p>View all uploaded projects from all users</p>
+        </div>
+
+        <div
+            style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.2);">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="font-size: 1.5rem; margin: 0;">All Uploaded Projects</h3>
+                <button onclick="loadAllProjects()"
+                    style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    🔄 Refresh
+                </button>
+            </div>
+
+            <div id="adminProjectsList">
+                <p style="text-align: center; opacity: 0.7;">Loading...</p>
+            </div>
+        </div>
+
+        <button onclick="showMain()"
+            style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 12px 24px; border-radius: 10px; margin-top: 20px; cursor: pointer;">
             ← Back to Topics
         </button>
     </div>
@@ -1383,7 +1418,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             loadUserProjects();
         }
 
-       
+
         // Display selected files (updated for folders)
         document.addEventListener('DOMContentLoaded', () => {
             const fileInput = document.getElementById('fileInput');
@@ -1391,12 +1426,12 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 fileInput.addEventListener('change', (e) => {
                     const fileList = document.getElementById('fileList');
                     fileList.innerHTML = '';
-                    
+
                     if (e.target.files.length > 0) {
                         // Group files by folder
                         const filesByFolder = {};
                         let totalSize = 0;
-                        
+
                         Array.from(e.target.files).forEach(file => {
                             totalSize += file.size;
                             const folderPath = file.webkitRelativePath.split('/').slice(0, -1).join('/') || 'root';
@@ -1405,7 +1440,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                             }
                             filesByFolder[folderPath].push(file);
                         });
-                        
+
                         fileList.innerHTML = `
                             <h4 style="margin-bottom: 10px; color: #3498db;">
                                 Selected Folder: ${Object.keys(filesByFolder)[0].split('/')[0] || 'Project'}
@@ -1414,20 +1449,20 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                                 📊 Total: ${e.target.files.length} files (${(totalSize / 1024 / 1024).toFixed(2)} MB)
                             </p>
                         `;
-                        
+
                         // Display files organized by folder
                         Object.keys(filesByFolder).sort().forEach(folder => {
                             const folderDiv = document.createElement('div');
                             folderDiv.style.cssText = 'margin-bottom: 15px;';
-                            
+
                             const folderHeader = document.createElement('div');
                             folderHeader.style.cssText = 'background: rgba(52, 152, 219, 0.3); padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-weight: 600; cursor: pointer; border-left: 3px solid #3498db;';
                             folderHeader.innerHTML = `📁 ${folder} (${filesByFolder[folder].length} files)`;
-                            
+
                             const filesContainer = document.createElement('div');
                             filesContainer.style.cssText = 'padding-left: 20px; display: none;';
                             filesContainer.id = `folder-${folder.replace(/[^a-zA-Z0-9]/g, '-')}`;
-                            
+
                             filesByFolder[folder].forEach(file => {
                                 const fileItem = document.createElement('div');
                                 fileItem.style.cssText = 'background: rgba(255, 255, 255, 0.05); padding: 6px 10px; margin-bottom: 3px; border-radius: 5px; font-size: 0.85rem;';
@@ -1438,7 +1473,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                                 `;
                                 filesContainer.appendChild(fileItem);
                             });
-                            
+
                             // Toggle folder view on click
                             folderHeader.onclick = () => {
                                 if (filesContainer.style.display === 'none') {
@@ -1449,7 +1484,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                                     folderHeader.innerHTML = `📁 ${folder} (${filesByFolder[folder].length} files)`;
                                 }
                             };
-                            
+
                             folderDiv.appendChild(folderHeader);
                             folderDiv.appendChild(filesContainer);
                             fileList.appendChild(folderDiv);
@@ -1483,7 +1518,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             let totalSize = 0;
             Array.from(fileInput.files).forEach(file => totalSize += file.size);
             const totalSizeMB = totalSize / 1024 / 1024;
-            
+
             if (totalSizeMB > 50) {
                 showStatus(`⚠️ Project is too large (${totalSizeMB.toFixed(2)} MB). Maximum size is 50 MB.`, 'error');
                 return;
@@ -1499,7 +1534,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 const formData = new FormData();
                 formData.append('projectName', projectName);
                 formData.append('userId', userId);
-                
+
                 // Add all files with their folder structure
                 Array.from(fileInput.files).forEach(file => {
                     formData.append('files', file);
@@ -1520,12 +1555,12 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
 
                 if (result.success) {
                     showStatus(`✅ Project "${projectName}" uploaded successfully! (${fileInput.files.length} files)`, 'success');
-                    
+
                     // Clear form
                     document.getElementById('projectName').value = '';
                     document.getElementById('fileInput').value = '';
                     document.getElementById('fileList').innerHTML = '';
-                    
+
                     // Reload projects list
                     loadUserProjects();
                 } else {
@@ -1548,7 +1583,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             const statusDiv = document.getElementById('uploadStatus');
             statusDiv.style.display = 'block';
             statusDiv.textContent = message;
-            
+
             if (type === 'success') {
                 statusDiv.style.background = 'linear-gradient(120deg, rgba(46, 204, 113, 0.3) 0%, rgba(39, 174, 96, 0.3) 100%)';
                 statusDiv.style.borderLeft = '4px solid #2ecc71';
@@ -1562,7 +1597,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 statusDiv.style.borderLeft = '4px solid #e74c3c';
                 statusDiv.style.color = '#fff';
             }
-            
+
             // Auto-hide after 5 seconds (except for info messages during upload)
             if (type !== 'info') {
                 setTimeout(() => {
@@ -1626,7 +1661,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             try {
                 const response = await fetch(`/.netlify/functions/get-project?projectId=${encodeURIComponent(projectId)}`);
                 const result = await response.json();
-                
+
                 if (result.success) {
                     // Group files by folder
                     const filesByFolder = {};
@@ -1637,15 +1672,15 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                         }
                         filesByFolder[folderPath].push(file);
                     });
-                    
+
                     // Create modal to display code
                     const modal = document.createElement('div');
                     modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.95); z-index: 10000; overflow-y: auto; padding: 20px;';
-                    
+
                     let filesHTML = '';
                     Object.keys(filesByFolder).sort().forEach(folder => {
                         filesHTML += `<h3 style="color: #3498db; margin: 25px 0 15px 0; font-size: 1.3rem;">📁 ${folder}</h3>`;
-                        
+
                         filesByFolder[folder].forEach(file => {
                             filesHTML += `
                                 <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);">
@@ -1657,7 +1692,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                             `;
                         });
                     });
-                    
+
                     modal.innerHTML = `
                         <div style="max-width: 1400px; margin: 0 auto; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border-radius: 20px; padding: 30px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px;">
@@ -1677,10 +1712,10 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                             ${filesHTML}
                         </div>
                     `;
-                    
+
                     document.body.appendChild(modal);
                 }
-                
+
             } catch (error) {
                 console.error('View project error:', error);
                 alert('❌ Failed to load project code. Please try again.');
@@ -1721,6 +1756,126 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+
+        // Show admin panel
+        function showAdminPanel() {
+            const password = prompt('Enter admin password:');
+            if (password !== 'robotrev2025') { // Change this password!
+                alert('❌ Incorrect password');
+                return;
+            }
+
+            document.getElementById('mainView').style.display = 'none';
+            document.getElementById('uploadView').style.display = 'none';
+            document.querySelectorAll('.page-view').forEach(page => {
+                page.style.display = 'none';
+            });
+            document.getElementById('adminView').style.display = 'block';
+            loadAllProjects();
+        }
+
+        // Load all projects from all users
+        async function loadAllProjects() {
+            const adminProjectsList = document.getElementById('adminProjectsList');
+            adminProjectsList.innerHTML = '<p style="text-align: center; opacity: 0.7;">⏳ Loading all projects...</p>';
+
+            try {
+                const response = await fetch('/.netlify/functions/get-all-projects');
+                const result = await response.json();
+
+                if (result.success && result.projects.length > 0) {
+                    // Group by user
+                    const projectsByUser = {};
+                    result.projects.forEach(project => {
+                        if (!projectsByUser[project.userId]) {
+                            projectsByUser[project.userId] = [];
+                        }
+                        projectsByUser[project.userId].push(project);
+                    });
+
+                    adminProjectsList.innerHTML = `
+                        <div style="margin-bottom: 20px; padding: 15px; background: rgba(52, 152, 219, 0.2); border-radius: 10px; border-left: 4px solid #3498db;">
+                            <h4>📊 Total Statistics</h4>
+                            <p>👥 ${Object.keys(projectsByUser).length} users • 📁 ${result.projects.length} projects</p>
+                        </div>
+                    `;
+
+                    // Display projects by user
+                    Object.keys(projectsByUser).sort().forEach(userId => {
+                        const userSection = document.createElement('div');
+                        userSection.style.cssText = 'margin-bottom: 30px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px;';
+
+                        userSection.innerHTML = `<h3 style="color: #3498db; margin-bottom: 15px;">👤 ${userId} (${projectsByUser[userId].length} projects)</h3>`;
+
+                        projectsByUser[userId].forEach(project => {
+                            const projectCard = document.createElement('div');
+                            projectCard.style.cssText = 'background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);';
+
+                            projectCard.innerHTML = `
+                                <h4 style="color: #2ecc71; margin-bottom: 8px;">${project.projectName}</h4>
+                                <p style="font-size: 0.85rem; opacity: 0.8; margin-bottom: 10px;">
+                                    📅 ${new Date(project.uploadDate).toLocaleString()} | 
+                                    📁 ${project.fileCount} files | 
+                                    💾 ${(project.totalSize / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <button onclick="viewProject('${project.projectId}')" 
+                                            style="background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                                        👁️ View
+                                    </button>
+                                    <button onclick="downloadProject('${project.projectId}')" 
+                                            style="background: #2ecc71; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                                        💾 Download
+                                    </button>
+                                    <button onclick="deleteProject('${project.projectId}', '${project.projectName}')" 
+                                            style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                                        🗑️ Delete
+                                    </button>
+                                </div>
+                            `;
+
+                            userSection.appendChild(projectCard);
+                        });
+
+                        adminProjectsList.appendChild(userSection);
+                    });
+                } else {
+                    adminProjectsList.innerHTML = '<p style="opacity: 0.7; text-align: center;">No projects uploaded yet.</p>';
+                }
+
+            } catch (error) {
+                console.error('Load all projects error:', error);
+                adminProjectsList.innerHTML = '<p style="color: #e74c3c; text-align: center;">❌ Failed to load projects.</p>';
+            }
+        }
+
+        // Delete project function
+        async function deleteProject(projectId, projectName) {
+            if (!confirm(`Are you sure you want to delete "${projectName}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/.netlify/functions/delete-project', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ projectId })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Project deleted successfully');
+                    loadAllProjects(); // Refresh the list
+                } else {
+                    alert('❌ Failed to delete project: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('❌ Failed to delete project');
+            }
         }
     </script>
 
