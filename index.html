@@ -641,10 +641,9 @@
 
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 10px; font-weight: 600;">Select Code Files:</label>
-                <input type="file" id="fileInput" multiple accept=".cpp,.h,.c,.txt,.ino"
+                <input type="file" id="fileInput" webkitdirectory directory multiple 
                     style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); color: white; cursor: pointer;">
-                <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 10px;">📝 Select .cpp, .h, .c, .txt, or .ino
-                    files from your VS Code project</p>
+                <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 10px;">📁 Click to select your entire VS Code project folder (all files will be uploaded)</p>
             </div>
 
             <div id="fileList" style="margin-bottom: 20px; max-height: 200px; overflow-y: auto;">
@@ -1384,28 +1383,84 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             loadUserProjects();
         }
 
-        // Display selected files
+       
+        // Display selected files (updated for folders)
         document.addEventListener('DOMContentLoaded', () => {
             const fileInput = document.getElementById('fileInput');
             if (fileInput) {
                 fileInput.addEventListener('change', (e) => {
                     const fileList = document.getElementById('fileList');
                     fileList.innerHTML = '';
-
+                    
                     if (e.target.files.length > 0) {
-                        fileList.innerHTML = '<h4 style="margin-bottom: 10px; color: #3498db;">Selected Files:</h4>';
+                        // Group files by folder
+                        const filesByFolder = {};
+                        let totalSize = 0;
+                        
                         Array.from(e.target.files).forEach(file => {
-                            const fileItem = document.createElement('div');
-                            fileItem.style.cssText = 'background: rgba(52, 152, 219, 0.2); padding: 10px; margin-bottom: 5px; border-radius: 8px; border-left: 3px solid #3498db;';
-                            fileItem.innerHTML = `<strong>${file.name}</strong> <span style="opacity: 0.7;">(${(file.size / 1024).toFixed(2)} KB)</span>`;
-                            fileList.appendChild(fileItem);
+                            totalSize += file.size;
+                            const folderPath = file.webkitRelativePath.split('/').slice(0, -1).join('/') || 'root';
+                            if (!filesByFolder[folderPath]) {
+                                filesByFolder[folderPath] = [];
+                            }
+                            filesByFolder[folderPath].push(file);
+                        });
+                        
+                        fileList.innerHTML = `
+                            <h4 style="margin-bottom: 10px; color: #3498db;">
+                                Selected Folder: ${Object.keys(filesByFolder)[0].split('/')[0] || 'Project'}
+                            </h4>
+                            <p style="margin-bottom: 15px; opacity: 0.8;">
+                                📊 Total: ${e.target.files.length} files (${(totalSize / 1024 / 1024).toFixed(2)} MB)
+                            </p>
+                        `;
+                        
+                        // Display files organized by folder
+                        Object.keys(filesByFolder).sort().forEach(folder => {
+                            const folderDiv = document.createElement('div');
+                            folderDiv.style.cssText = 'margin-bottom: 15px;';
+                            
+                            const folderHeader = document.createElement('div');
+                            folderHeader.style.cssText = 'background: rgba(52, 152, 219, 0.3); padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-weight: 600; cursor: pointer; border-left: 3px solid #3498db;';
+                            folderHeader.innerHTML = `📁 ${folder} (${filesByFolder[folder].length} files)`;
+                            
+                            const filesContainer = document.createElement('div');
+                            filesContainer.style.cssText = 'padding-left: 20px; display: none;';
+                            filesContainer.id = `folder-${folder.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                            
+                            filesByFolder[folder].forEach(file => {
+                                const fileItem = document.createElement('div');
+                                fileItem.style.cssText = 'background: rgba(255, 255, 255, 0.05); padding: 6px 10px; margin-bottom: 3px; border-radius: 5px; font-size: 0.85rem;';
+                                fileItem.innerHTML = `
+                                    <span style="color: #2ecc71;">📄</span> 
+                                    ${file.name} 
+                                    <span style="opacity: 0.6;">(${(file.size / 1024).toFixed(2)} KB)</span>
+                                `;
+                                filesContainer.appendChild(fileItem);
+                            });
+                            
+                            // Toggle folder view on click
+                            folderHeader.onclick = () => {
+                                if (filesContainer.style.display === 'none') {
+                                    filesContainer.style.display = 'block';
+                                    folderHeader.innerHTML = `📂 ${folder} (${filesByFolder[folder].length} files)`;
+                                } else {
+                                    filesContainer.style.display = 'none';
+                                    folderHeader.innerHTML = `📁 ${folder} (${filesByFolder[folder].length} files)`;
+                                }
+                            };
+                            
+                            folderDiv.appendChild(folderHeader);
+                            folderDiv.appendChild(filesContainer);
+                            fileList.appendChild(folderDiv);
                         });
                     }
                 });
             }
         });
 
-        // Upload project function
+
+        // Upload project function (updated for folders)
         async function uploadProject() {
             const projectName = document.getElementById('projectName').value;
             const userId = document.getElementById('userId').value || 'anonymous';
@@ -1420,7 +1475,17 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             }
 
             if (!fileInput.files || fileInput.files.length === 0) {
-                showStatus('⚠️ Please select at least one file', 'error');
+                showStatus('⚠️ Please select a project folder', 'error');
+                return;
+            }
+
+            // Check total size
+            let totalSize = 0;
+            Array.from(fileInput.files).forEach(file => totalSize += file.size);
+            const totalSizeMB = totalSize / 1024 / 1024;
+            
+            if (totalSizeMB > 50) {
+                showStatus(`⚠️ Project is too large (${totalSizeMB.toFixed(2)} MB). Maximum size is 50 MB.`, 'error');
                 return;
             }
 
@@ -1434,11 +1499,16 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 const formData = new FormData();
                 formData.append('projectName', projectName);
                 formData.append('userId', userId);
-
-                // Add all files
+                
+                // Add all files with their folder structure
                 Array.from(fileInput.files).forEach(file => {
                     formData.append('files', file);
+                    // Also send the relative path to preserve folder structure
+                    formData.append('filePaths', file.webkitRelativePath || file.name);
                 });
+
+                // Update status with progress
+                showStatus(`⏳ Uploading ${fileInput.files.length} files...`, 'info');
 
                 // Upload to Netlify function
                 const response = await fetch('/.netlify/functions/upload-project', {
@@ -1449,13 +1519,13 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 const result = await response.json();
 
                 if (result.success) {
-                    showStatus(`✅ Project "${projectName}" uploaded successfully!`, 'success');
-
+                    showStatus(`✅ Project "${projectName}" uploaded successfully! (${fileInput.files.length} files)`, 'success');
+                    
                     // Clear form
                     document.getElementById('projectName').value = '';
                     document.getElementById('fileInput').value = '';
                     document.getElementById('fileList').innerHTML = '';
-
+                    
                     // Reload projects list
                     loadUserProjects();
                 } else {
@@ -1473,26 +1543,32 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             }
         }
 
-        // Show status message
+        // Show status message (updated with info type)
         function showStatus(message, type) {
             const statusDiv = document.getElementById('uploadStatus');
             statusDiv.style.display = 'block';
             statusDiv.textContent = message;
-
+            
             if (type === 'success') {
                 statusDiv.style.background = 'linear-gradient(120deg, rgba(46, 204, 113, 0.3) 0%, rgba(39, 174, 96, 0.3) 100%)';
                 statusDiv.style.borderLeft = '4px solid #2ecc71';
+                statusDiv.style.color = '#fff';
+            } else if (type === 'info') {
+                statusDiv.style.background = 'linear-gradient(120deg, rgba(52, 152, 219, 0.3) 0%, rgba(41, 128, 185, 0.3) 100%)';
+                statusDiv.style.borderLeft = '4px solid #3498db';
                 statusDiv.style.color = '#fff';
             } else {
                 statusDiv.style.background = 'linear-gradient(120deg, rgba(231, 76, 60, 0.3) 0%, rgba(192, 57, 43, 0.3) 100%)';
                 statusDiv.style.borderLeft = '4px solid #e74c3c';
                 statusDiv.style.color = '#fff';
             }
-
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                statusDiv.style.display = 'none';
-            }, 5000);
+            
+            // Auto-hide after 5 seconds (except for info messages during upload)
+            if (type !== 'info') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
         }
 
         // Load user's projects
@@ -1544,45 +1620,67 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             }
         }
 
-        // View project code
+
+        // View project code (updated to show folder structure)
         async function viewProject(projectId) {
             try {
                 const response = await fetch(`/.netlify/functions/get-project?projectId=${encodeURIComponent(projectId)}`);
                 const result = await response.json();
-
+                
                 if (result.success) {
+                    // Group files by folder
+                    const filesByFolder = {};
+                    result.project.files.forEach(file => {
+                        const folderPath = file.relativePath.split('/').slice(0, -1).join('/') || 'root';
+                        if (!filesByFolder[folderPath]) {
+                            filesByFolder[folderPath] = [];
+                        }
+                        filesByFolder[folderPath].push(file);
+                    });
+                    
                     // Create modal to display code
                     const modal = document.createElement('div');
-                    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.9); z-index: 10000; overflow-y: auto; padding: 20px;';
-
+                    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.95); z-index: 10000; overflow-y: auto; padding: 20px;';
+                    
                     let filesHTML = '';
-                    result.project.files.forEach(file => {
-                        filesHTML += `
-                            <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                                <h3 style="color: #3498db; margin-bottom: 15px;">📄 ${file.name}</h3>
-                                <div style="background: #1e1e1e; border-radius: 8px; padding: 15px; overflow-x: auto;">
-                                    <pre style="color: #f8f8f2; margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.9rem;">${escapeHtml(file.content)}</pre>
+                    Object.keys(filesByFolder).sort().forEach(folder => {
+                        filesHTML += `<h3 style="color: #3498db; margin: 25px 0 15px 0; font-size: 1.3rem;">📁 ${folder}</h3>`;
+                        
+                        filesByFolder[folder].forEach(file => {
+                            filesHTML += `
+                                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                                    <h4 style="color: #2ecc71; margin-bottom: 15px;">📄 ${file.name}</h4>
+                                    <div style="background: #1e1e1e; border-radius: 8px; padding: 15px; overflow-x: auto; max-height: 500px; overflow-y: auto;">
+                                        <pre style="color: #f8f8f2; margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.85rem; line-height: 1.5;">${escapeHtml(file.content)}</pre>
+                                    </div>
                                 </div>
-                            </div>
-                        `;
+                            `;
+                        });
                     });
-
+                    
                     modal.innerHTML = `
-                        <div style="max-width: 1200px; margin: 0 auto; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border-radius: 20px; padding: 30px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-                                <h2 style="color: #ecf0f1;">${result.project.projectName}</h2>
+                        <div style="max-width: 1400px; margin: 0 auto; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border-radius: 20px; padding: 30px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px;">
+                                <div>
+                                    <h2 style="color: #ecf0f1; margin-bottom: 5px;">${result.project.projectName}</h2>
+                                    <p style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">
+                                        📁 ${result.project.folderName || 'Project'} • 
+                                        ${result.project.fileCount} files • 
+                                        ${(result.project.totalSize / 1024 / 1024).toFixed(2)} MB
+                                    </p>
+                                </div>
                                 <button onclick="this.closest('[style*=fixed]').remove()" 
-                                        style="background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1rem;">
+                                        style="background: #e74c3c; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;">
                                     ✕ Close
                                 </button>
                             </div>
                             ${filesHTML}
                         </div>
                     `;
-
+                    
                     document.body.appendChild(modal);
                 }
-
+                
             } catch (error) {
                 console.error('View project error:', error);
                 alert('❌ Failed to load project code. Please try again.');

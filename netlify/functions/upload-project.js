@@ -9,6 +9,7 @@ export default async (req, context) => {
   try {
     const formData = await req.formData();
     const files = formData.getAll('files');
+    const filePaths = formData.getAll('filePaths');
     const projectName = formData.get('projectName');
     const userId = formData.get('userId') || 'anonymous';
 
@@ -20,14 +21,14 @@ export default async (req, context) => {
     }
 
     // File size validation
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
+    const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
     
     let totalSize = 0;
     for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
         return new Response(JSON.stringify({
-          error: `File ${file.name} is too large. Max size is 5MB`
+          error: `File ${file.name} is too large. Max size is 10MB per file`
         }), { status: 400, headers: { 'Content-Type': 'application/json' } });
       }
       totalSize += file.size;
@@ -35,7 +36,7 @@ export default async (req, context) => {
 
     if (totalSize > MAX_TOTAL_SIZE) {
       return new Response(JSON.stringify({
-        error: 'Total upload size exceeds 20MB limit'
+        error: `Total upload size (${(totalSize/1024/1024).toFixed(2)} MB) exceeds 50MB limit`
       }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
@@ -46,31 +47,39 @@ export default async (req, context) => {
     // Create unique project ID
     const projectId = `${userId}-${Date.now()}`;
     
-    // Store each file
+    // Store each file with folder structure
     const fileMetadata = [];
-    for (const file of files) {
-      const fileName = file.name;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const relativePath = filePaths[i] || file.name;
       const fileContent = await file.text();
-      const filePath = `${projectId}/${fileName}`;
+      const filePath = `${projectId}/${relativePath}`;
       
+      // Store file content
       await projectStore.set(filePath, fileContent);
       
       fileMetadata.push({
-        name: fileName,
+        name: file.name,
+        relativePath: relativePath,
         size: file.size,
         type: file.type,
         path: filePath
       });
     }
 
+    // Extract folder name from first file path
+    const folderName = filePaths[0]?.split('/')[0] || 'Project';
+
     // Store project metadata
     const metadata = {
       projectId,
       projectName,
+      folderName,
       userId,
       files: fileMetadata,
       uploadDate: new Date().toISOString(),
-      fileCount: files.length
+      fileCount: files.length,
+      totalSize: totalSize
     };
 
     await metadataStore.set(projectId, JSON.stringify(metadata));
@@ -78,7 +87,8 @@ export default async (req, context) => {
     return new Response(JSON.stringify({
       success: true,
       projectId,
-      message: 'Project uploaded successfully'
+      message: 'Project uploaded successfully',
+      fileCount: files.length
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
