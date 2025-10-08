@@ -1535,14 +1535,13 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
 
 
         // Upload project function (updated for folders)
+        // Update the uploadProject function to filter files
         async function uploadProject() {
             const projectName = document.getElementById('projectName').value;
             const userId = document.getElementById('userId').value || 'anonymous';
             const fileInput = document.getElementById('fileInput');
             const uploadBtn = document.getElementById('uploadBtn');
-            const statusDiv = document.getElementById('uploadStatus');
 
-            // Validation
             if (!projectName) {
                 showStatus('⚠️ Please enter a project name', 'error');
                 return;
@@ -1553,9 +1552,23 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 return;
             }
 
+            // Filter files - only upload source files and necessary project files
+            const allowedExtensions = /\.(cpp|h|c|txt|ino|hpp|cc|cxx|json|mk|gitignore|md)$/i;
+            const allowedFiles = ['makefile', 'vex_cxxflags.txt'];
+
+            const filesToUpload = Array.from(fileInput.files).filter(file => {
+                const fileName = file.name.toLowerCase();
+                return allowedExtensions.test(fileName) || allowedFiles.includes(fileName);
+            });
+
+            if (filesToUpload.length === 0) {
+                showStatus('⚠️ No valid code files found in the selected folder', 'error');
+                return;
+            }
+
             // Check total size
             let totalSize = 0;
-            Array.from(fileInput.files).forEach(file => totalSize += file.size);
+            filesToUpload.forEach(file => totalSize += file.size);
             const totalSizeMB = totalSize / 1024 / 1024;
 
             if (totalSizeMB > 50) {
@@ -1563,28 +1576,23 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 return;
             }
 
-            // Disable button during upload
             uploadBtn.disabled = true;
             uploadBtn.textContent = '⏳ Uploading...';
             uploadBtn.style.background = '#95a5a6';
 
             try {
-                // Create FormData
                 const formData = new FormData();
                 formData.append('projectName', projectName);
                 formData.append('userId', userId);
 
-                // Add all files with their folder structure
-                Array.from(fileInput.files).forEach(file => {
+                // Add filtered files
+                filesToUpload.forEach(file => {
                     formData.append('files', file);
-                    // Also send the relative path to preserve folder structure
                     formData.append('filePaths', file.webkitRelativePath || file.name);
                 });
 
-                // Update status with progress
-                showStatus(`⏳ Uploading ${fileInput.files.length} files...`, 'info');
+                showStatus(`⏳ Uploading ${filesToUpload.length} files...`, 'info');
 
-                // Upload to Netlify function
                 const response = await fetch('/.netlify/functions/upload-project', {
                     method: 'POST',
                     body: formData
@@ -1593,14 +1601,12 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 const result = await response.json();
 
                 if (result.success) {
-                    showStatus(`✅ Project "${projectName}" uploaded successfully! (${fileInput.files.length} files)`, 'success');
+                    showStatus(`✅ Project "${projectName}" uploaded successfully! (${filesToUpload.length} files)`, 'success');
 
-                    // Clear form
                     document.getElementById('projectName').value = '';
                     document.getElementById('fileInput').value = '';
                     document.getElementById('fileList').innerHTML = '';
 
-                    // Reload projects list
                     loadUserProjects();
                 } else {
                     showStatus(`❌ Upload failed: ${result.error}`, 'error');
@@ -1610,7 +1616,6 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 console.error('Upload error:', error);
                 showStatus(`❌ Upload failed: ${error.message}`, 'error');
             } finally {
-                // Re-enable button
                 uploadBtn.disabled = false;
                 uploadBtn.textContent = '🚀 Upload Project';
                 uploadBtn.style.background = '#3498db';
@@ -1763,6 +1768,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
 
         // Download project files
         // Download project as ZIP file (updated to create proper folder structure)
+        // Download project as ZIP file (fixed to handle binary files correctly)
         async function downloadProject(projectId) {
             try {
                 // Show loading message
@@ -1778,7 +1784,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                     // Create a new JSZip instance
                     const zip = new JSZip();
 
-                    // Use the folder name from the project, or project name as fallback
+                    // Use the folder name from the project
                     const folderName = result.project.folderName || result.project.projectName.replace(/[^a-zA-Z0-9-_]/g, '_');
 
                     // Create the root folder in the ZIP
@@ -1786,9 +1792,15 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
 
                     // Add each file with its full folder structure
                     result.project.files.forEach(file => {
-                        // Use the relative path to preserve folder structure
                         const filePath = file.relativePath || file.name;
-                        rootFolder.file(filePath, file.content);
+
+                        if (file.encoding === 'base64') {
+                            // Decode base64 for binary files
+                            rootFolder.file(filePath, file.content, { base64: true });
+                        } else {
+                            // Regular text file
+                            rootFolder.file(filePath, file.content);
+                        }
                     });
 
                     // Generate the ZIP file

@@ -1,7 +1,6 @@
 import { getStore } from '@netlify/blobs';
 
 export default async (req, context) => {
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -52,18 +51,36 @@ export default async (req, context) => {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const relativePath = filePaths[i] || file.name;
-      const fileContent = await file.text();
+      
+      // Check if file is text-based or binary
+      const isTextFile = /\.(cpp|h|c|txt|ino|hpp|cc|cxx|json|xml|md|gitignore|mk|mk\.env)$/i.test(file.name);
+      
+      let fileContent;
+      let encoding = 'utf8';
+      
+      if (isTextFile) {
+        // Store as text
+        fileContent = await file.text();
+      } else {
+        // Store binary files as base64
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        fileContent = btoa(String.fromCharCode(...bytes));
+        encoding = 'base64';
+      }
+      
       const filePath = `${projectId}/${relativePath}`;
       
-      // Store file content
+      // Store file content with metadata about encoding
       await projectStore.set(filePath, fileContent);
       
       fileMetadata.push({
         name: file.name,
         relativePath: relativePath,
         size: file.size,
-        type: file.type,
-        path: filePath
+        type: file.type || 'application/octet-stream',
+        path: filePath,
+        encoding: encoding
       });
     }
 

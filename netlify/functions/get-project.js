@@ -33,9 +33,17 @@ export default async (req, context) => {
     const filesWithContent = [];
     for (const file of metadata.files) {
       const content = await projectStore.get(file.path, { type: 'text' });
+      
+      // If file was stored as base64, decode it
+      let finalContent = content;
+      if (file.encoding === 'base64') {
+        // Keep as base64 for transfer, will decode on client side
+        finalContent = content;
+      }
+      
       filesWithContent.push({
         ...file,
-        content
+        content: finalContent
       });
     }
 
