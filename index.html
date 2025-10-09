@@ -1536,6 +1536,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
 
         // Upload project function (updated for folders)
         // Update the uploadProject function to filter files
+                // Update the uploadProject function with better file filtering
         async function uploadProject() {
             const projectName = document.getElementById('projectName').value;
             const userId = document.getElementById('userId').value || 'anonymous';
@@ -1552,13 +1553,41 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 return;
             }
 
-            // Filter files - only upload source files and necessary project files
-            const allowedExtensions = /\.(cpp|h|c|txt|ino|hpp|cc|cxx|json|mk|gitignore|md)$/i;
-            const allowedFiles = ['makefile', 'vex_cxxflags.txt'];
-
+            // Updated file filter - include ALL necessary VEX files
+            const allowedExtensions = /\.(cpp|h|c|txt|ino|hpp|cc|cxx|json|mk|gitignore|md|properties)$/i;
+            const allowedFiles = ['makefile', 'vex_cxxflags.txt', 'compile_commands.json'];
+            const allowedPaths = ['.vscode/', 'vex/', 'src/', 'include/'];
+            
             const filesToUpload = Array.from(fileInput.files).filter(file => {
                 const fileName = file.name.toLowerCase();
-                return allowedExtensions.test(fileName) || allowedFiles.includes(fileName);
+                const relativePath = file.webkitRelativePath || file.name;
+                
+                // Exclude compiled/binary files
+                if (/\.(bin|elf|map|o|a|exe)$/i.test(fileName)) {
+                    return false;
+                }
+                
+                // Exclude build output folder
+                if (relativePath.includes('/build/')) {
+                    return false;
+                }
+                
+                // Include files with allowed extensions
+                if (allowedExtensions.test(fileName)) {
+                    return true;
+                }
+                
+                // Include specific important files
+                if (allowedFiles.includes(fileName)) {
+                    return true;
+                }
+                
+                // Include files in important directories
+                if (allowedPaths.some(path => relativePath.includes(path))) {
+                    return true;
+                }
+                
+                return false;
             });
 
             if (filesToUpload.length === 0) {
@@ -1566,11 +1595,31 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 return;
             }
 
+            // Check for critical VEX files
+            const hasMakefile = filesToUpload.some(f => f.name.toLowerCase() === 'makefile');
+            const hasVexFolder = filesToUpload.some(f => (f.webkitRelativePath || '').includes('vex/'));
+            
+            if (!hasMakefile || !hasVexFolder) {
+                const confirmUpload = confirm(
+                    '⚠️ Warning: This might not be a complete VEX project.\n\n' +
+                    'Missing: ' + (!hasMakefile ? 'makefile ' : '') + (!hasVexFolder ? 'vex folder ' : '') + '\n\n' +
+                    'The project may not work properly in VS Code.\n\n' +
+                    'Do you want to upload anyway?'
+                );
+                
+                if (!confirmUpload) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = '🚀 Upload Project';
+                    uploadBtn.style.background = '#3498db';
+                    return;
+                }
+            }
+
             // Check total size
             let totalSize = 0;
             filesToUpload.forEach(file => totalSize += file.size);
             const totalSizeMB = totalSize / 1024 / 1024;
-
+            
             if (totalSizeMB > 50) {
                 showStatus(`⚠️ Project is too large (${totalSizeMB.toFixed(2)} MB). Maximum size is 50 MB.`, 'error');
                 return;
@@ -1584,7 +1633,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 const formData = new FormData();
                 formData.append('projectName', projectName);
                 formData.append('userId', userId);
-
+                
                 // Add filtered files
                 filesToUpload.forEach(file => {
                     formData.append('files', file);
@@ -1602,11 +1651,11 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
 
                 if (result.success) {
                     showStatus(`✅ Project "${projectName}" uploaded successfully! (${filesToUpload.length} files)`, 'success');
-
+                    
                     document.getElementById('projectName').value = '';
                     document.getElementById('fileInput').value = '';
                     document.getElementById('fileList').innerHTML = '';
-
+                    
                     loadUserProjects();
                 } else {
                     showStatus(`❌ Upload failed: ${result.error}`, 'error');
@@ -1697,6 +1746,12 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 console.error('Load projects error:', error);
                 projectsList.innerHTML = '<p style="color: #e74c3c; text-align: center;">❌ Failed to load projects. Please try again.</p>';
             }
+
+                        // In loadUserProjects() function, add this button:
+            <button onclick="debugProject('${project.projectId}')" 
+                    style="background: #9b59b6; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">
+                🔍 Debug
+            </button>
         }
 
 
@@ -1725,13 +1780,35 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                     Object.keys(filesByFolder).sort().forEach(folder => {
                         filesHTML += `<h3 style="color: #3498db; margin: 25px 0 15px 0; font-size: 1.3rem;">📁 ${folder}</h3>`;
 
-                        filesByFolder[folder].forEach(file => {
+                        filesByFolder[folder].forEach(file => {uploadView
                             filesHTML += `
-                                <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1);">
-                                    <h4 style="color: #2ecc71; margin-bottom: 15px;">📄 ${file.name}</h4>
-                                    <div style="background: #1e1e1e; border-radius: 8px; padding: 15px; overflow-x: auto; max-height: 500px; overflow-y: auto;">
-                                        <pre style="color: #f8f8f2; margin: 0; white-space: pre-wrap; word-wrap: break-word; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.85rem; line-height: 1.5;">${escapeHtml(file.content)}</pre>
+                                <div style="background: rgba(52, 152, 219, 0.15); padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #3498db;">
+                                    <h4 style="margin-bottom: 10px; color: #3498db;">📤 How to Upload Your VEX Project</h4>
+                                    
+                                    <div style="background: rgba(46, 204, 113, 0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 3px solid #2ecc71;">
+                                        <p style="margin: 0; font-size: 0.95rem;">
+                                            <strong>✅ Correct:</strong> Select the <strong>main project folder</strong> that contains:<br>
+                                            • <code>src/</code> folder with main.cpp<br>
+                                            • <code>include/</code> folder<br>
+                                            • <code>vex/</code> folder<br>
+                                            • <code>makefile</code><br>
+                                            • <code>.vscode/</code> folder
+                                        </p>
                                     </div>
+                                    
+                                    <div style="background: rgba(231, 76, 60, 0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 3px solid #e74c3c;">
+                                        <p style="margin: 0; font-size: 0.95rem;">
+                                            <strong>❌ Wrong:</strong> Don't select individual folders like just "src" or "include"
+                                        </p>
+                                    </div>
+                                    
+                                    <ol style="margin-left: 20px; line-height: 1.8;">
+                                        <li>Click "Select Code Files" below</li>
+                                        <li>Navigate to your VEX project folder</li>
+                                        <li>Select the <strong>entire project folder</strong> (the one with all the folders inside)</li>
+                                        <li>All files and folders will be preserved</li>
+                                        <li>Give your project a name and click Upload!</li>
+                                    </ol>
                                 </div>
                             `;
                         });
@@ -1976,6 +2053,45 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             } catch (error) {
                 console.error('Delete error:', error);
                 alert('❌ Failed to delete project');
+            }
+        }
+
+                // Temporary debug function - add this to your JavaScript
+        async function debugProject(projectId) {
+            try {
+                const response = await fetch(`/.netlify/functions/get-project?projectId=${encodeURIComponent(projectId)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('=== PROJECT FILES DEBUG ===');
+                    console.log('Project Name:', result.project.projectName);
+                    console.log('Total Files:', result.project.files.length);
+                    console.log('\nFile List:');
+                    result.project.files.forEach(file => {
+                        console.log(`- ${file.relativePath} (${(file.size/1024).toFixed(2)} KB)`);
+                    });
+                    
+                    // Check for critical files
+                    const criticalFiles = [
+                        'makefile',
+                        'vex/mkenv.mk',
+                        'vex/mkrules.mk',
+                        '.vscode/vex_project.json'
+                    ];
+                    
+                    console.log('\n=== CRITICAL FILES CHECK ===');
+                    criticalFiles.forEach(criticalFile => {
+                        const found = result.project.files.some(f => 
+                            f.relativePath.toLowerCase().includes(criticalFile.toLowerCase())
+                        );
+                        console.log(`${found ? '✅' : '❌'} ${criticalFile}`);
+                    });
+                    
+                    alert('Check browser console (F12) for debug info');
+                }
+                
+            } catch (error) {
+                console.error('Debug error:', error);
             }
         }
     </script>
