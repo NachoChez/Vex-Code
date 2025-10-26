@@ -2279,7 +2279,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             }
 
             try {
-                const response = await fetch('/.netlify/functions/delete-project', {
+                const response = await fetch('/.netlify/functions/delete-projects', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ projectId })
