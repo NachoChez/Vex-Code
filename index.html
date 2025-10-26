@@ -11,21 +11,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>C++ for Robotics - Topic Guide</title>
     <style>
-
-
+        /* Drag and drop styles */
         /* Drag and drop styles */
         .project-card-draggable {
             user-select: none;
         }
 
         .project-card-draggable:hover {
-            background: rgba(255,255,255,0.1) !important;
+            background: rgba(255, 255, 255, 0.1) !important;
             transform: translateX(5px);
         }
 
         .project-card-draggable:active {
             cursor: grabbing !important;
         }
+
         /* Monaco Editor Container */
         #monacoEditor {
             overflow: hidden;
@@ -1447,6 +1447,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                 history.pushState({ page: 'main' }, 'C++ for Robotics', '/');
             }
         }
+
         function showPage(topicId, pushState = true) {
             document.getElementById('mainView').style.display = 'none';
             document.getElementById('uploadView').style.display = 'none';
@@ -1988,7 +1989,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
         // Show admin panel
         function showAdminPanel(pushState = true) {
             const password = prompt('Enter admin password:');
-            if (password !== 'robotics2024') {
+            if (password !== 'ee') {
                 alert('❌ Incorrect password');
                 return;
             }
@@ -2020,20 +2021,21 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
         }
 
         // Load all projects from all users
-                // Load all projects with drag-and-drop reordering
+        // Load all projects with drag-and-drop reordering
+        // Load all projects with drag-and-drop reordering
         async function loadAllProjects() {
             const adminProjectsList = document.getElementById('adminProjectsList');
             adminProjectsList.innerHTML = '<p style="text-align: center; opacity: 0.7;">⏳ Loading all projects...</p>';
-            
+
             try {
                 const response = await fetch('/.netlify/functions/get-all-projects');
                 const result = await response.json();
-                
+
                 if (result.success && result.projects.length > 0) {
                     // Check if custom order exists in localStorage
                     const customOrder = localStorage.getItem('adminProjectOrder');
                     let orderedProjects = result.projects;
-                    
+
                     if (customOrder) {
                         const orderMap = JSON.parse(customOrder);
                         orderedProjects = result.projects.sort((a, b) => {
@@ -2042,7 +2044,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                             return orderA - orderB;
                         });
                     }
-                    
+
                     // Group by user
                     const projectsByUser = {};
                     orderedProjects.forEach(project => {
@@ -2051,7 +2053,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                         }
                         projectsByUser[project.userId].push(project);
                     });
-                    
+
                     adminProjectsList.innerHTML = `
                         <div style="margin-bottom: 20px; padding: 15px; background: rgba(52, 152, 219, 0.2); border-radius: 10px; border-left: 4px solid #3498db;">
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -2071,34 +2073,34 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                             </p>
                         </div>
                     `;
-                    
+
                     // Display projects by user with drag-and-drop
                     Object.keys(projectsByUser).sort().forEach(userId => {
                         const userSection = document.createElement('div');
                         userSection.style.cssText = 'margin-bottom: 30px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px;';
                         userSection.id = `user-section-${userId}`;
-                        
+
                         userSection.innerHTML = `<h3 style="color: #3498db; margin-bottom: 15px;">👤 ${userId} (${projectsByUser[userId].length} projects)</h3>`;
-                        
+
                         const projectsContainer = document.createElement('div');
                         projectsContainer.id = `projects-container-${userId}`;
-                        
+
                         projectsByUser[userId].forEach((project, index) => {
                             const projectCard = createProjectCard(project, index);
                             projectsContainer.appendChild(projectCard);
                         });
-                        
+
                         userSection.appendChild(projectsContainer);
                         adminProjectsList.appendChild(userSection);
                     });
-                    
+
                     // Initialize drag-and-drop
                     initializeDragAndDrop();
-                    
+
                 } else {
                     adminProjectsList.innerHTML = '<p style="opacity: 0.7; text-align: center; padding: 20px;">No projects uploaded yet.</p>';
                 }
-                
+
             } catch (error) {
                 console.error('Load all projects error:', error);
                 adminProjectsList.innerHTML = '<p style="color: #e74c3c; text-align: center;">❌ Failed to load projects. Error: ' + error.message + '</p>';
@@ -2112,7 +2114,7 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             projectCard.draggable = true;
             projectCard.dataset.projectId = project.projectId;
             projectCard.style.cssText = 'background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease; cursor: move;';
-            
+
             projectCard.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <div style="color: #95a5a6; font-size: 1.5rem; cursor: grab; user-select: none;">
@@ -2146,14 +2148,14 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
                     </div>
                 </div>
             `;
-            
+
             return projectCard;
         }
 
         // Initialize drag-and-drop functionality
         function initializeDragAndDrop() {
             const draggables = document.querySelectorAll('.project-card-draggable');
-            
+
             draggables.forEach(draggable => {
                 draggable.addEventListener('dragstart', handleDragStart);
                 draggable.addEventListener('dragend', handleDragEnd);
@@ -2175,12 +2177,12 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
 
         function handleDragEnd(e) {
             this.style.opacity = '1';
-            
+
             // Remove all drag-over styles
             document.querySelectorAll('.project-card-draggable').forEach(card => {
                 card.style.borderTop = '';
             });
-            
+
             // Save new order
             saveProjectOrder();
         }
@@ -2207,21 +2209,21 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             if (e.stopPropagation) {
                 e.stopPropagation();
             }
-            
+
             if (draggedElement !== this) {
                 // Get the parent container
                 const container = this.parentNode;
                 const allCards = [...container.querySelectorAll('.project-card-draggable')];
                 const draggedIndex = allCards.indexOf(draggedElement);
                 const targetIndex = allCards.indexOf(this);
-                
+
                 if (draggedIndex < targetIndex) {
                     this.parentNode.insertBefore(draggedElement, this.nextSibling);
                 } else {
                     this.parentNode.insertBefore(draggedElement, this);
                 }
             }
-            
+
             this.style.borderTop = '';
             return false;
         }
@@ -2230,20 +2232,20 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
         function saveProjectOrder() {
             const orderMap = {};
             let order = 0;
-            
+
             document.querySelectorAll('.project-card-draggable').forEach(card => {
                 const projectId = card.dataset.projectId;
                 orderMap[projectId] = order++;
             });
-            
+
             localStorage.setItem('adminProjectOrder', JSON.stringify(orderMap));
-            
+
             // Show confirmation
             const confirmation = document.createElement('div');
             confirmation.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #2ecc71; color: white; padding: 15px 25px; border-radius: 10px; z-index: 10000; animation: slideIn 0.3s ease;';
             confirmation.textContent = '✅ Order saved';
             document.body.appendChild(confirmation);
-            
+
             setTimeout(() => {
                 confirmation.style.opacity = '0';
                 confirmation.style.transition = 'opacity 0.3s ease';
@@ -2256,12 +2258,12 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
             if (confirm('Reset project order to default (by upload date)?')) {
                 localStorage.removeItem('adminProjectOrder');
                 loadAllProjects();
-                
+
                 const confirmation = document.createElement('div');
                 confirmation.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #3498db; color: white; padding: 15px 25px; border-radius: 10px; z-index: 10000;';
                 confirmation.textContent = '✅ Order reset to default';
                 document.body.appendChild(confirmation);
-                
+
                 setTimeout(() => {
                     confirmation.style.opacity = '0';
                     confirmation.style.transition = 'opacity 0.3s ease';
@@ -2303,32 +2305,33 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
         let currentFileIndex = 0;
 
         // Edit project function
-                // Edit project function (updated)
+        // Edit project function (updated)
+        // Edit project function (updated)
         async function editProject(projectId) {
             try {
                 const response = await fetch(`/.netlify/functions/get-project?projectId=${encodeURIComponent(projectId)}`);
                 const result = await response.json();
-                
+
                 if (result.success) {
                     currentProjectData = result.project;
                     currentFileIndex = 0;
-                    
+
                     // Show editor view with URL
                     showEditorView(true);
-                    
+
                     // Update project name
                     document.getElementById('editorProjectName').textContent = `Editing: ${result.project.projectName}`;
-                    
+
                     // Load Monaco Editor
                     loadMonacoEditor();
-                    
+
                     // Display file list
                     displayFileList();
-                    
+
                 } else {
                     alert('❌ Failed to load project for editing');
                 }
-                
+
             } catch (error) {
                 console.error('Edit project error:', error);
                 alert('❌ Failed to load project for editing');
@@ -2515,24 +2518,25 @@ Brain.Screen.printAt(1, 70, <span class="string">"Heading: %f"</span>, currentHe
         }
 
         // Close editor
-                // Close editor (updated)
+        // Close editor (updated)
+        // Close editor (updated)
         function closeEditor() {
             const hasUnsavedChanges = document.getElementById('editorStatus').textContent.includes('Unsaved');
-            
+
             if (hasUnsavedChanges) {
                 if (!confirm('You have unsaved changes. Are you sure you want to close the editor?')) {
                     return;
                 }
             }
-            
+
             if (monacoEditorInstance) {
                 monacoEditorInstance.dispose();
                 monacoEditorInstance = null;
             }
-            
+
             currentProjectData = null;
             currentFileIndex = 0;
-            
+
             // Go back to admin panel
             showAdminPanel(true);
         }
